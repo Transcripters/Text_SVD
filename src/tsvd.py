@@ -3,9 +3,14 @@ import random
 import collections
 random.seed(10)
 
+stopwords=[]
+with open("data/nltk_stopwords") as our_dictionary:
+    stopwords=our_dictionary.read().split("\n")
+    our_dictionary.close()
+
 # Adds a text's words to the shared dictionary.
 def addwords(text,wordset):
-    text=[word.lower() for word in ''.join(char for char in text.replace('\n',' ') if char.isalpha() or char==' ').split(' ') if not word=='']
+    text=[word.lower() for word in ''.join(char for char in text.replace('\n',' ') if char.isalpha() or char==' ').split(' ') if not word=='' and not word in stopwords]
     wordset.update({word for word in text})
 # Maps the word pair occurence frequencies on a text.
 # Updates wordset to include all the words from the text.
@@ -20,7 +25,7 @@ def addwords(text,wordset):
 # which can transform that weight (for giving more importance to
 # closer words, for example).
 def freqMap(text,wordset,weightscale,weightfunc=lambda w: w):
-    text=[word.lower() for word in ''.join(char for char in text.replace('\n',' ') if char.isalpha() or char==' ').split(' ') if not word=='']
+    text=[word.lower() for word in ''.join(char for char in text.replace('\n',' ') if char.isalpha() or char==' ').split(' ') if not word=='' and not word in stopwords]
     #A map for quickly finding matrix coordinates
     hashmap=collections.OrderedDict()
     for i,w in enumerate(wordset):
@@ -122,12 +127,13 @@ components=pd.DataFrame(data=[(labels[item[0]],item[1]) for item in sorted(enume
 sns.barplot(data=components,x="Weight",y="Word")
 plt.show()
 print("Generating vectors and comparations...")
-vectora=SVD.transform(matrixa)
+vectora=[entry[0] for entry in SVD.transform(matrixa)]
+print("Reference vector magnitude: "+str(round(scprod(vectora,vectora),4)))
 for fil in files:
     with open(fil) as ff:
         textb=ff.read()
         _,matrixb=freqMap(textb,wordset,5,lambda w: w**2)
-        vectorb=SVD.transform(matrixb)
-        print("Text_ref vs \""+fil+"\": "+str(vectorAngle(vectora,vectorb)))
+        vectorb=[entry[0] for entry in SVD.transform(matrixb)]
+        print("Text_ref vs \""+fil+"\": "+str(round(vectorAngle(vectora,vectorb),2))+"\n\tMagnitude:"+str(round(scprod(vectorb,vectorb),4)))
         ff.close()
 print("Done!")
