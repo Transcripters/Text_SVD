@@ -1,4 +1,5 @@
 import pdb
+import random
 
 # Maps the word pair occurence frequencies on a text.
 # Updates wordset to include all the words from the text.
@@ -37,6 +38,26 @@ def ordermatrix(matrix,wordset):
                 row[wordfrequencies[i][0]]=temp
     labels=[tup[2] for tup in wordfrequencies]
     return (matrix,labels)
+# Generates a random text of up to <n> words using the given frequency map and labels.
+def gibberish_from_map(wmap,labels,n):
+    if n<=0:
+        return
+    l=0
+    #Current word
+    cur=random.randint(0,len(labels))
+    while l<n:
+        totalfreq=sum(wmap[cur])
+        if(totalfreq==0):
+            return
+        nword=random.randint(0,totalfreq)
+        accrand=0
+        for i in range(len(labels)):
+            accrand+=wmap[cur][i]
+            if accrand>nword:
+                print(labels[cur],end=" ")
+                cur=i
+                break
+        l+=1
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -64,5 +85,6 @@ with open(args['file']) as our_file:
     print("And")
     components=sorted(enumerate(SVD.components_[1]),key=lambda x: x[1],reverse=True)
     print('Component "'+labels[components[0][0]]+' '+labels[components[1][0]]+'"')
+    gibberish_from_map(matrix,labels,32)
     sns.heatmap(data=matrix,cmap=sns.color_palette("Blues"))
     plt.show()
