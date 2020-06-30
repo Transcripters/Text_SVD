@@ -1,7 +1,12 @@
 import pdb
 import random
 import collections
+random.seed(10)
 
+# Adds a text's words to the shared dictionary.
+def addwords(text,wordset):
+    text=[word.lower() for word in ''.join(char for char in text.replace('\n',' ') if char.isalpha() or char==' ').split(' ') if not word=='']
+    wordset.update({word for word in text})
 # Maps the word pair occurence frequencies on a text.
 # Updates wordset to include all the words from the text.
 # Outputs a wordset x wordset matrix where every entry is
@@ -16,7 +21,6 @@ import collections
 # closer words, for example).
 def freqMap(text,wordset,weightscale,weightfunc=lambda w: w):
     text=[word.lower() for word in ''.join(char for char in text.replace('\n',' ') if char.isalpha() or char==' ').split(' ') if not word=='']
-    wordset.update({word for word in text})
     #A map for quickly finding matrix coordinates
     hashmap=collections.OrderedDict()
     for i,w in enumerate(wordset):
@@ -28,7 +32,7 @@ def freqMap(text,wordset,weightscale,weightfunc=lambda w: w):
             if compindex<0 or compindex>=len(text) or compindex==i:
                 break
             matrix[hashmap[text[i]]][hashmap[text[compindex]]]+=weightfunc((weightscale-abs(j))+1)
-    return (hashmap.keys(),matrix)
+    return ([key for key in hashmap.keys()],matrix)
 # Orders a freqMap so the most frequent words are the first
 # Returns a label list and a matrix in a (labels,matrix) tuple
 def ordermatrix(labels,matrix):
@@ -73,6 +77,13 @@ def gibberish_from_map(wmap,labels,n):
                 break
         l+=1
 
+# Calculates the scalar product between two vectors
+def scprod(a,b):
+    return sum([a[i]*b[i] for i in range(len(a))])
+# Calculates the angle between two vectors
+def vectorAngle(a,b):
+    return math.acos((scprod(a,b))/(math.sqrt(scprod(a,a))*math.sqrt(scprod(b,b))))
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -80,26 +91,43 @@ from sklearn.decomposition import TruncatedSVD
 import math
 import argparse
 parser=argparse.ArgumentParser(description="A simple naïve interface for doing wordpair frequency analysis")
-parser.add_argument('--file',help="The file to be analysed")
+parser.add_argument('--text_ref',help="The first file to be analysed")
+parser.add_argument('--text_comp',help="The files to be compared to the first (comma-separated list)")
 args=vars(parser.parse_args())
-if not args['file']:
-    raise Exception("No file specified.")
-with open(args['file']) as our_file:
-    wordset=set()
-    print("Generating frequency matrix...")
-    labels,matrix=freqMap(our_file.read(),wordset,5)
-    labels,matrix=ordermatrix(labels,matrix)
-    print("Done!")
-    print("Generating SVD...")
-    SVD=TruncatedSVD(n_components=len(labels)-1,random_state=1)
-    SVD.fit(matrix)
-    print("Done!")
-    print("The two most important components are")
-    components=sorted(enumerate(SVD.components_[0]),key=lambda x: x[1],reverse=True)
-    print('Component "'+labels[components[0][0]]+' '+labels[components[1][0]]+'"')
-    print("And")
-    components=sorted(enumerate(SVD.components_[1]),key=lambda x: x[1],reverse=True)
-    print('Component "'+labels[components[0][0]]+' '+labels[components[1][0]]+'"')
-    gibberish_from_map(matrix,labels,32)
-    sns.heatmap(data=matrix,cmap=sns.color_palette("Reds"))
-    plt.show()
+if not args['text_ref'] or not args['text_comp']:
+    raise Exception("Not enough files specified.")
+wordset=set()
+print("Generating dictionary...")
+texta=textb=""
+with open(args['text_ref']) as our_file:
+    texta=our_file.read()
+    addwords(texta,wordset)
+our_files=args['text_comp']
+files=our_files.split(',')
+for fil in files:
+    with open(fil) as ff:
+        textb=ff.read()
+        addwords(textb,wordset)
+        ff.close()
+wordset=frozenset(wordset)
+print("Generating frequency matrix...")
+labels,matrixa=freqMap(texta,wordset,5,lambda w: w**2)
+print("Done!")
+print("Generating SVD...")
+SVD=TruncatedSVD(n_components=1,random_state=1)
+SVD.fit(matrixa)
+print("Done! Here are the weights:")
+components=pd.DataFrame(data=[(labels[item[0]],item[1]) for item in sorted(enumerate(SVD.components_[0]),reverse=True,key=lambda x:x[1])[:20]],columns=["Word","Weight"]
+)
+sns.barplot(data=components,x="Weight",y="Word")
+plt.show()
+print("Generating vectors and comparations...")
+vectora=SVD.transform(matrixa)
+for fil in files:
+    with open(fil) as ff:
+        textb=ff.read()
+        _,matrixb=freqMap(textb,wordset,5,lambda w: w**2)
+        vectorb=SVD.transform(matrixb)
+        print("Text_ref vs \""+fil+"\": "+str(vectorAngle(vectora,vectorb)))
+        ff.close()
+print("Done!")
