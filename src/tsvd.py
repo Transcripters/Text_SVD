@@ -96,44 +96,68 @@ from sklearn.decomposition import TruncatedSVD
 import math
 import argparse
 parser=argparse.ArgumentParser(description="A simple naïve interface for doing wordpair frequency analysis")
-parser.add_argument('--text_ref',help="The first file to be analysed")
-parser.add_argument('--text_comp',help="The files to be compared to the first (comma-separated list)")
+parser.add_argument('--text_ref',help='The files we will compare to ("concept" references)')
+parser.add_argument('--text_comp',help="The files to be compared/measured")
 args=vars(parser.parse_args())
 if not args['text_ref'] or not args['text_comp']:
     raise Exception("Not enough files specified.")
 wordset=set()
 print("Generating dictionary...")
-texta=textb=""
-with open(args['text_ref']) as our_file:
-    texta=our_file.read()
-    addwords(texta,wordset)
+our_files=args['text_ref']
+files=our_files.split(',')
+for fil in files:
+    with open(fil) as ff:
+        text=ff.read()
+        addwords(text,wordset)
+        ff.close()
+our_files=args['text_comp']
+files=our_files.split(',')
+for fil in files:
+    with open(fil) as ff:
+        text=ff.read()
+        addwords(text,wordset)
+        ff.close()
+wordset=frozenset(wordset)
+
+print("Mapping reference matrices...")
+labels=[]
+referencematrices=[]
+our_files=args['text_ref']
+files=our_files.split(',')
+for reference in files:
+    with open(reference) as our_file:
+        text=our_file.read()
+        labels,matrix=freqMap(text,wordset,5,lambda w: w**2)
+        referencematrices.append(matrix)
+        our_file.close()
+print("Done!")
+print("Generating reference vectors (SVDs)...")
+referenceSVDs=[]
+for i,matrix in enumerate(referencematrices):
+    SVD=TruncatedSVD(n_components=1,random_state=1)
+    SVD.fit(matrix)
+    referenceSVDs.append((SVD,[entry[0] for entry in SVD.transform(matrix)],files[i]))
+    print('# Reference "'+files[i]+'"')
+    print("\tMagnitude: "+str(round(scprod(referenceSVDs[-1][1],referenceSVDs[-1][1]),4)))
+    if "i" in args:
+        components=pd.DataFrame(data=[(labels[item[0]],item[1]) for item in sorted(enumerate(SVD.components_[0]),reverse=True,key=lambda x:x[1])[:20]],columns=["Word","Weight"]
+)
+        sns.barplot(data=components,x="Weight",y="Word")
+        plt.show()
+print("Done!")
+print("Comparing texts...")
 our_files=args['text_comp']
 files=our_files.split(',')
 for fil in files:
     with open(fil) as ff:
         textb=ff.read()
-        addwords(textb,wordset)
-        ff.close()
-wordset=frozenset(wordset)
-print("Generating frequency matrix...")
-labels,matrixa=freqMap(texta,wordset,5,lambda w: w**2)
-print("Done!")
-print("Generating SVD...")
-SVD=TruncatedSVD(n_components=1,random_state=1)
-SVD.fit(matrixa)
-print("Done! Here are the weights:")
-components=pd.DataFrame(data=[(labels[item[0]],item[1]) for item in sorted(enumerate(SVD.components_[0]),reverse=True,key=lambda x:x[1])[:20]],columns=["Word","Weight"]
-)
-sns.barplot(data=components,x="Weight",y="Word")
-plt.show()
-print("Generating vectors and comparations...")
-vectora=[entry[0] for entry in SVD.transform(matrixa)]
-print("Reference vector magnitude: "+str(round(scprod(vectora,vectora),4)))
-for fil in files:
-    with open(fil) as ff:
-        textb=ff.read()
         _,matrixb=freqMap(textb,wordset,5,lambda w: w**2)
         vectorb=[entry[0] for entry in SVD.transform(matrixb)]
-        print("Text_ref vs \""+fil+"\": "+str(round(vectorAngle(vectora,vectorb),2))+"\n\tMagnitude:"+str(round(scprod(vectorb,vectorb),4)))
+        print('## Analysing "'+fil+'" ##')
+        for reference in referenceSVDs:
+            projection=[entry[0] for entry in reference[0].transform(matrixb)]
+            print('* Text "'+reference[2]+'"')
+            print('\t* Projection magnitude: '+str(round(scprod(projection,projection),4)))
+            print('\t* Projection angle: '+str(round(vectorAngle(reference[1],projection),2))+'rad')
         ff.close()
 print("Done!")
