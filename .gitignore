@@ -1,1 +1,5 @@
 samples/alice.txt
+
+*.tsvd
+*.dict
+__pycache__

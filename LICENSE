@@ -1,6 +1,6 @@
 MIT License
 
-TSVD - A naïve text analysis tool
+TSVD - A SVD-based text comparation tool
 Copyright (c) 2020 Transcripters
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

@@ -2,61 +2,50 @@
 
 This is a tool meant to compare texts and measure how "similar" they are conceptually. The method used has no basis besides some scientific intuition and experience with Data Science.
 
-For using the tool, clone this repository and run `src/tsvd --text_ref <your references> --text_comp <texts to compare>`. 
-
-This will yield a result in the following format:
-
-```
-## Analysing "<file to compare>" ##
-* Text "<your first reference>"
-    * Projection magnitude: <a number>
-    * Projection angle: <an angle>
-* Text "<your second reference>"
-[...]
-## Analysing "<second file to compare>" ##
-[...]
-```
-
-Then you may evaluate how "similar" the texts are through the magnitude and angle of the projections. A smaller angle and bigger magnitude means a better alignment.
-
-For understanding how this works, refer to [the documentation](./docs/main.md).
+For understanding how this works, please refer to [the documentation](./docs/main.md).
 
 ## Sample output
 
-`python3 src/tsvd.py --text_ref samples/effects_of_nuctest,samples/manedwolf --text_comp samples/tunguska,samples/nuctest`
+`python3 src/generator.py --text_ref samples/effects_of_nuctest,samples/manedwolf --stopwords data/nltk_stopwords --out demo;python3 src/comparator.py --tsvd demo.tsvd --dict demo.dict --text_comp samples/tunguska,samples/nuctest,samples/fennec --stopwords data/nltk_stopwords`
 
 Running the command above on the root directory of the project yields the following result:
 
 ```
-Generating dictionary...
-Mapping reference matrices...
-Done!
-Generating reference vectors (SVDs)...
-# Reference "samples/effects_of_nuctest"
-        Magnitude: 472105.0176
-# Reference "samples/manedwolf"
-        Magnitude: 2147989.2448
-Done!
 Comparing texts...
 ## Analysing "samples/tunguska" ##
-* Text "samples/effects_of_nuctest"
-        * Projection magnitude: 28654.8833
-        * Projection angle: 1.12rad
-* Text "samples/manedwolf"
-        * Projection magnitude: 6720.2297
-        * Projection angle: 1.56rad
+Reference "samples/effects_of_nuctest":
+        Normalized magnitude: 1.0
+        Normalized angle: 0.0
+        Normalized score: 1.0
+Reference "samples/manedwolf":
+        Normalized magnitude: 0.0
+        Normalized angle: 1.0
+        Normalized score: 0.0
 ## Analysing "samples/nuctest" ##
-* Text "samples/effects_of_nuctest"
-        * Projection magnitude: 442626.3335
-        * Projection angle: 1.32rad
-* Text "samples/manedwolf"
-        * Projection magnitude: 6380.6524
-        * Projection angle: 1.57rad
+Reference "samples/effects_of_nuctest":
+        Normalized magnitude: 1.0
+        Normalized angle: 0.0
+        Normalized score: 1.0
+Reference "samples/manedwolf":
+        Normalized magnitude: 0.0
+        Normalized angle: 1.0
+        Normalized score: 0.0
+## Analysing "samples/fennec" ##
+Reference "samples/effects_of_nuctest":
+        Normalized magnitude: 0.0
+        Normalized angle: 1.0
+        Normalized score: 0.0
+Reference "samples/manedwolf":
+        Normalized magnitude: 1.0
+        Normalized angle: 0.0
+        Normalized score: 1.0
 Done!
 ```
 
-It's clearly visible that both the Tunguska event wikipedia article (samples/tunguska) and the article about nuclear tests (samples/nuctest) align better with the "Effects of Nuclear Tests" reference (samples/effects_of_nuctest) than with the "Maned Wolf" reference (samples/manedwolf).
+One can easily see that both the "Tunguska Event" sample (samples/tunguska) and "Nuclear Tests" sample (samples/nuctest) align better with `samples/effects_of_nuctest` and the article about the Fennec Fox aligns better with the one about Maned Wolves.
+
+These results are only that well-separated (0 and 1) because we have two samples and we normalize the values over the results of all the references. For more than two references one should receive intermediary values too.
 
 All those texts were extracted from wikipedia.
 
-The subject choice was merely by chance. The "Tunguska Event" article was featured on the frontpage when development started and I thought it would be nice to compare it with nuclear events. The "Maned Wolf" article came from the need of having a "not aligned" reference and my personal liking of those animals.
+The subject choice was merely by chance. The "Tunguska Event" article was featured on the frontpage when development started and I thought it would be nice to compare it with nuclear events. The "Maned Wolf" and "Fennec Fox" articles came from the need of having a "not aligned" reference and my personal liking of those animals.
